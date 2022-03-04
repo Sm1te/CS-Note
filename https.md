@@ -104,7 +104,9 @@ Content-Type:text/html 类型
 4. [Client error responses](https://developer.mozilla.org/en-US/docs/Web/HTTP/Status#client_error_responses) (`400`–`499`)
 5. [Server error responses](https://developer.mozilla.org/en-US/docs/Web/HTTP/Status#server_error_responses) (`500`–`599`)
 
-![image-20220224114303016](\http_status_code.png)
+![http_status_code](C:\Java_Study\General Node\img\http_status_code.png)
+
+
 
 
 
