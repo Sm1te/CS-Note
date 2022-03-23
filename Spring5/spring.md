@@ -622,3 +622,413 @@ You should use the prototype scope for all stateful beans and the singleton scop
 ```
 
 针对某个HTTP Session，Spring容器会根据userPreferences bean定义创建一个全新的 userPreferences bean实例，且该userPreferences bean仅在当前HTTP Session内有效。与request作用域一样，可以根据需要放心的更改所创建实例的内部状态，而别的HTTP Session中根据 userPreferences创建的实例，将不会看到这些特定于某个HTTP Session的状态变化。当HTTP Session 最终被废弃的时候，在该HTTP Session作用域内的bean也会被废弃掉。
+
+
+
+### 7 Bean的自动装配
+
+Spring会在上下文中自动寻找并自动给bean装配.
+
+
+
+三种装配机制：
+
+1. 在xml中显式配置
+2. 在java中显式配置
+3. 隐式的bean发现机制和自动装配
+
+
+
+Spring的自动装配需要从两个角度来实现，或者说是两个操作： 
+
+1. 组件扫描(component scanning)：spring会自动发现应用上下文中所创建的bean 
+2. 自动装配(autowiring)：spring自动满足bean之间的依赖，也就是我们说的IoC/DI
+
+组件扫描和自动装配组合发挥巨大威力，使的显示的配置降低到最少。 
+
+推荐不使用自动装配xml配置 , 而使用注解
+
+正常：
+
+```xml
+<bean id = "cat" class="com.robin.pojo.Cat"/>
+<bean id = "dog" class="com.robin.pojo.Dog"/>
+
+<bean id = "human" class="com.robin.pojo.Human">
+    <property name="name" value = "Robin"/>
+    <property name="cat" ref= "cat"/>
+    <property name="dog" ref = "dog"/>
+</bean>
+```
+
+
+
+#### 7.1 byName
+
+由于在手动配置xml过程中，常常发生字母缺漏和大小写等错误，而无法对其进行检查，使得开发效率降低。
+
+```xml
+<bean id = "cat" class="com.robin.pojo.Cat"/>
+<bean id = "dog" class="com.robin.pojo.Dog"/>
+<!--byName会自动在容器上下文中查找，和自己对象set方法后面的值对应的bean id-->
+<bean id = "human" class="com.robin.pojo.Human" autowire="byName">
+    <property name="name" value = "Robin"/>
+</bean>
+```
+
+当一个bean节点带有 autowire byName的属性时:
+
+1. 将查找其类中所有的set方法名，例如setCat，获得将set去掉并且首字母小写的字符串，即cat。 
+2. 去spring容器中寻找是否有此字符串名称id的对象。
+3. 如果有，就取出注入；如果没有，就报空指针异常。
+
+#### 7.2 byType
+
+```xml
+    <bean id = "cat" class="com.robin.pojo.Cat"/>
+    <bean id = "dog" class="com.robin.pojo.Dog"/>
+    <!--byName会自动在容器上下文中查找，和自己对象属性类型相同的bean
+        这个类型的全局数量必须为1
+		可以省略id
+    -->
+    <bean id = "human" class="com.robin.pojo.Human" autowire="byType">
+        <property name="name" value = "Robin"/>
+    </bean>
+```
+
+使用autowire byType首先需要保证：同一类型的对象，**在spring容器中唯一**。如果不唯一，会报不唯一的异常。
+
+
+
+#### 7.3 使用注解实现自动装配
+
+在spring配置文件中引入context文件头
+
+```xml
+<beans xmlns="http://www.springframework.org/schema/beans"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xmlns:context="http://www.springframework.org/schema/context"
+    xsi:schemaLocation="http://www.springframework.org/schema/beans
+        https://www.springframework.org/schema/beans/spring-beans.xsd
+        http://www.springframework.org/schema/context
+        https://www.springframework.org/schema/context/spring-context.xsd">
+	<!--开启属性注解支持！-->
+    <context:annotation-config/>
+
+</beans>
+
+```
+
+##### 7.3.1 @Autowired
+
+- @Autowired是按类型自动转配的，不支持id匹配。 
+- 需要导入 spring-aop的包
+- 可以放在属性或者set部分使用
+- 可以忽略set方法使用, 自动转配的属性在IOC（Spring）容器中存在，且符合名字byName
+
+```java
+public class Human {
+    @Autowired
+    private Cat cat;
+    @Autowired
+    private Dog dog;
+    private String name;
+    
+    .......
+}
+```
+
+@Autowired(required=false) 说明： false，对象可以为null；true，对象必须存对象，不能为null
+
+```java
+//如果允许对象为null，设置required = false,默认为true
+@Autowired(required = false)
+private Cat cat;
+```
+
+
+
+##### 7.3.2 @Qualifier
+
+@Autowired是根据类型自动装配的，加上@Qualifier则可以根据byName的方式自动装配 @Qualifier不能单独使用。
+
+如果@Autowired自动装配的环节比较复杂， 自动装配无法通过一个注解完成的是时候， 我们可以可以使用@Qualifier(value  = "") 来配合autowired使用，指定一个唯一的bean对象注入
+
+```xml
+<bean id="dog1" class="com.kuang.pojo.Dog"/>
+<bean id="dog2" class="com.kuang.pojo.Dog"/>
+<bean id="cat1" class="com.kuang.pojo.Cat"/>
+<bean id="cat2" class="com.kuang.pojo.Cat"/>
+```
+
+```java
+@Autowired
+@Qualifier(value = "cat2")
+private Cat cat;
+@Autowired
+@Qualifier(value = "dog2")
+private Dog dog;
+```
+
+
+
+##### 7.3.3
+
+- @Resource如有指定的name属性，**先按该属性进行byName方式查找装配**； 
+- **其次再进行默认的byName方式进行装配**；
+- 如果以上都不成功，**则按byType的方式自动装配**。 
+- 都不成功，则报异常。
+
+```java
+//Case 1
+public class User {
+    //如果允许对象为null，设置required = false,默认为true
+    @Resource(name = "cat2")
+    private Cat cat;
+    @Resource
+    private Dog dog;
+    private String str;
+}
+//Case 2
+@Resource
+private Cat cat;
+@Resource
+private Dog dog;
+```
+
+```xml
+<!--Case 1-->
+<bean id="dog" class="com.kuang.pojo.Dog"/>
+<bean id="cat1" class="com.kuang.pojo.Cat"/>
+<bean id="cat2" class="com.kuang.pojo.Cat"/>
+<bean id="user" class="com.kuang.pojo.User"/>
+<!--Case 2-->
+<bean id="dog" class="com.kuang.pojo.Dog"/>
+<bean id="cat1" class="com.kuang.pojo.Cat"/>
+```
+
+先进行byName查找，失败；再进行byType查找。
+
+
+
+##### 7.3.4 Summary
+
+**@Autowired与@Resource异同**： 
+
+1. @Autowired与@Resource都可以用来装配bean。都可以写在字段上，或写在setter方法上。 
+2. @Autowired默认按类型装配（属于spring规范），默认情况下必须要求依赖对象必须存在，如果要允许null 值，可以设置它的required属性为false，如：@Autowired(required=false) ，如果我们想使用名称装配可以结合@Qualifier注解进行使用 
+3. @Resource（属于J2EE复返），默认按照名称进行装配，名称可以通过name属性进行指定。如果没有指定name属性，当注解写在字段上时，默认取字段名进行按照名称查找，如果注解写在 setter方法上默认取属性名进行装配。 当找不到与名称匹配的bean时才按照类型进行装配。但是需要注意的是，如果name属性一旦指定，就只会按照名称进行装配。 
+
+它们的作用相同都是用注解方式注入对象，但执行顺序不同。**@Autowired先byType，@Resource先 byName。**
+
+
+
+### 8 使用注解开发
+
+#### 8.1 Bean
+
+要使用注解，必须要导入aop的包
+
+<img src="C:\Users\liyij\AppData\Roaming\Typora\typora-user-images\image-20220322215947663.png" alt="image-20220322215947663" style="zoom:80%;" />
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xmlns:context="http://www.springframework.org/schema/context"
+    xsi:schemaLocation="http://www.springframework.org/schema/beans
+        https://www.springframework.org/schema/beans/spring-beans.xsd
+        http://www.springframework.org/schema/context
+        https://www.springframework.org/schema/context/spring-context.xsd">
+
+    <context:annotation-config/>
+
+</beans>
+```
+
+#### 8.2 Bean的实现
+
+1. 扫描哪些包下的注解
+
+```xml
+<context:component-scan base-package="com.robin"/>
+```
+
+2. 在指定包下编写类，增加注解
+
+就是说这个类以及被Spring接管了，注册到了容器中
+
+```java
+// 等价于<bean id = "user" class = "com.robin.pojo.User">
+@Component
+public class User {
+public String name = "robin";
+}
+```
+
+#### 8.3 属性注入
+
+使用注解注入属性
+
+1. 无set方法
+
+```java
+@Component("user")
+// 相当于配置文件中 <bean id="user" class="当前注解的类"/>
+public class User {
+    @Value("Yijian Li")
+    // 相当于配置文件中 <property name="name" value="Yijian Li"/>
+    public String name;
+}
+```
+
+2. 有set方法
+
+```java
+@Component("user")
+public class User {
+    public String name;
+        @Value("Yijian Li")
+        public void setName(String name) {
+        this.name = name;
+    }
+}
+```
+
+#### 8.4 衍生注解
+
+我们这些注解，就是替代了在配置文件当中配置步骤，更加的方便快捷！ 
+
+**@Component三个衍生注解** 
+
+为了更好的进行分层，Spring可以使用其它三个注解，功能一样，目前使用哪一个功能都一样。 
+
+- **@Controller：web层** 
+- **@Service：service层** 
+- **@Repository：dao层** 
+
+写上这些注解，就相当于将这个类交给Spring管理装配了！
+
+
+
+#### 8.5 自动装配注解
+
+- @Autowired：自动装配通过类型。名字
+
+​	如果Autowired 不能唯一自动装配上属性，则需要通过@Qualifier(value = "xxx")
+
+- @Nullable：字段标记了这个注解，说明这个字段可以为Null
+- @Resource：自动装配通过名字，类型
+- @Component: 组件，放在类上，说明这个类被Spring管理了
+
+
+
+#### 8.6 作用域
+
+@scope 
+
+- singleton：默认的，Spring会采用单例模式创建这个对象。关闭工厂 ，所有的对象都会销毁。 
+- prototype：多例模式。关闭工厂 ，所有的对象不会销毁。内部的垃圾回收机制会回收
+
+```java
+@Controller("user")
+@Scope("prototype")
+public class User {
+    @Value("秦疆")
+    public String name;
+}
+
+```
+
+
+
+#### 8.7 XML vs. Annotation
+
+**XML与注解比较**
+
+- XML可以适用任何场景 ，结构清晰，维护方便 
+- 注解不是自己提供的类使用不了，开发简单方便 
+
+**xml与注解整合开发** ：推荐最佳实践 
+
+- xml管理Bean 
+- 注解完成属性注入 
+- 使用过程中， 可以不用扫描，扫描是为了类上的注解 
+
+```xml
+<context:annotation-config/>
+```
+
+作用： 
+
+- 进行注解驱动注册，从而使注解生效 
+- 用于激活那些已经在spring容器里注册过的bean上面的注解，也就是显示的向Spring注册 
+- 如果不扫描包，就需要手动配置bean 
+- 如果不加注解驱动，则注入的值为null！
+
+### 9 Java-based Container Configuration
+
+JavaConfig 原来是 Spring 的一个子项目，它通过 Java 类的方式提供 Bean 的定义信息.
+
+完全不使用xml配置
+
+1. 编写实例
+
+```java
+@Component //将这个类标注为Spring的一个组件，放到容器中！
+public class Dog {
+	public String name = "dog";
+}
+```
+
+2. 新建config配置包
+
+```java
+@Configuration //他本来也是Component类， 代表这个是一个配置类 == beans.xml
+public class MyConfig {
+    @Bean 
+    //注册一个bean, 等于之前写的bean标签
+    //这个方法的名字等价于 bean 以前的id
+    //返回值就是 bean中的class属性
+    public Dog dog(){
+    	return new Dog();//返回要注入的对象
+    }
+}
+
+```
+
+3. Test
+
+```java
+@Test
+public void test2(){
+    ApplicationContext applicationContext = new AnnotationConfigApplicationContext(MyConfig.class);
+    Dog dog = (Dog) applicationContext.getBean("dog");
+    System.out.println(dog.name);
+}
+```
+
+#### 导入其他配置
+
+```java
+@Configuration //代表这是一个配置类
+public class MyConfig2 {
+}
+
+@Configuration
+@Import(MyConfig2.class) //导入合并其他配置类，类似于配置文件中的 inculde 标签
+public class MyConfig {
+    @Bean
+    public Dog dog(){
+    	return new Dog();
+    }
+}
+
+```
+
+
+
+### 10 代理模式
+
+#### 10.1 静态代理
+
