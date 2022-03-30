@@ -385,3 +385,106 @@ WHERE order_num = 20005
 ![image-20220322172025511](C:\Users\liyij\AppData\Roaming\Typora\typora-user-images\image-20220322172025511.png)
 
 ### 4. 函数
+
+#### 4.1 文本处理函数
+
+| Left()      | 返回串左边的字符  |
+| ----------- | ----------------- |
+| Length()    | 返回串的长度      |
+| Locate()    | 找出串的一个子串  |
+| Lower()     | 转为小写          |
+| LTrim()     | 去掉串左边的空格  |
+| Right()     | 返回串右边的字符  |
+| RTrim()     | 去掉串右边的空格  |
+| Soundex()   | 返回串的SOUNDEX值 |
+| SubString() | 返回子串的字符    |
+| Upper()     | 转为大写          |
+
+```mysql
+SELECT cust_name， cust_contact FROM customers WHERE Soundex(cust_contact) = Soundex('robin')
+```
+
+#### 4.2 时间和日期处理函数
+
+<img src="C:\Users\liyij\AppData\Roaming\Typora\typora-user-images\image-20220329211548456.png" alt="image-20220329211548456" style="zoom:77%;" />
+
+日期格式： YYYY-MM-DD
+
+```mysql
+SELECT cust_id, order_num FROM orders WHERE Date(order_date) BETWEEN '2021-09-01' AND '2021-10-01'
+SELECT cust_id, order_num FROM orders WHERE Year(order_date) = 2021 AND Month(order_date) = 9
+```
+
+#### 4.3 数据处理函数
+
+<img src="C:\Users\liyij\AppData\Roaming\Typora\typora-user-images\image-20220329212605045.png" alt="image-20220329212605045" style="zoom:67%;" />
+
+
+
+### 5. 汇总处理
+
+| AVG()       | 平均值       |
+| ----------- | ------------ |
+| **COUNT()** | **某列行数** |
+| **MAX()**   | **最大值**   |
+| **MIN()**   | **最小值**   |
+| **SUM()**   | **和**       |
+
+```mysql
+SELECT AVG(X) AS AVG_VAL FROM Y WHERE vend_id = 1003
+```
+
+```mysql
+SELECT COUNT(X) AS Y FROM Z
+SELECT COUNT(*) AS Y FROM Z
+SELECT AVG(DISTINC prod_price) AS avg_price FROM X
+```
+
+
+
+### 6. 数据分组
+
+**GROUP BY**
+
+```mysql
+SELECT book, COUNT(*) AS num_prods FROM products GROUP BY vend_id
+```
+
+GROUP BY必须出现在WHERE之后,ORDER BY之前
+
+**HAVING	**
+
+所有的where语句都可以使用having代替
+
+having过滤分组，where过滤行
+
+```mysql
+SELECT cust_id, COUNT(*) AS orders FROM orders GROUP BY cust_id HAVING COUNT(*) >= 2
+```
+
+where在分组前过滤数据，HAVING在分组后过滤数据
+
+
+
+**ORDER BY / GROUP BY**
+
+![image-20220329214905680](C:\Users\liyij\AppData\Roaming\Typora\typora-user-images\image-20220329214905680.png)
+
+```mysql
+SELECT order_num, SUM(quantity * item_price) AS ordertotal FROM orderitems
+GROUP BY order_num
+HAVING SUM(ordertotal >= 50)
+ORDER BY ordertotal
+```
+
+
+
+![image-20220329215338318](C:\Users\liyij\AppData\Roaming\Typora\typora-user-images\image-20220329215338318.png)
+
+![image-20220329215355701](C:\Users\liyij\AppData\Roaming\Typora\typora-user-images\image-20220329215355701.png)
+
+
+
+
+
+### 7. 子查询
